@@ -1,106 +1,67 @@
 import os
-from typing import Optional, Tuple
+import openai
+import gradio as gr
 from threading import Lock
 
-import gradio as gr
-
-from query_data import get_basic_qa_chain
-
-
-def set_openai_api_key(api_key: str):
-    """Set the api key and return chain.
-    If no api_key, then None is returned.
-    """
-    if api_key:
-        os.environ["OPENAI_API_KEY"] = api_key
-        chain = get_basic_qa_chain()
-        os.environ["OPENAI_API_KEY"] = ""
-        return chain
-
+# Define the name of the environment variable where the API key is stored
+OPENAI_API_KEY_ENV_VAR = "OPENAI_API_KEY"
 
 class ChatWrapper:
-
     def __init__(self):
         self.lock = Lock()
+        self.history = []
 
-    def __call__(
-        self, api_key: str, inp: str, history: Optional[Tuple[str, str]], chain
-    ):
-        """Execute the chat functionality."""
-        self.lock.acquire()
-        try:
-            history = history or []
-            # If chain is None, that is because no API key was provided.
-            if chain is None:
-                history.append((inp, "Please paste your OpenAI key to use"))
-                return history, history
-            # Set OpenAI key
-            import openai
+    def __call__(self, inp: str):
+        with self.lock:
+            # Access the API key from the environment variable
+            api_key = os.getenv(OPENAI_API_KEY_ENV_VAR)
+            if not api_key:
+                return [("Error", "API Key is not set in environment variables.")]
+
             openai.api_key = api_key
-            # Run chain and append input.
-            output = chain({"question": inp})["answer"]
-            history.append((inp, output))
-        except Exception as e:
-            raise e
-        finally:
-            self.lock.release()
-        return history, history
 
+            # Append the new user message to the history
+            self.history.append({"role": "user", "content": inp})
 
+            # Send the input to the GPT API and append the response to the history
+            try:
+                response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages=self.history
+                )
+                # Append the new assistant message to the history
+                self.history.append(response["choices"][0]["message"])
+                # Convert history to the expected list of tuples format
+                return [(m["role"], m["content"]) for m in self.history]
+            except Exception as e:
+                return [("Error", str(e))]
+
+# Instantiate the ChatWrapper
 chat = ChatWrapper()
 
-block = gr.Blocks(css=".gradio-container {background-color: lightgray}")
-
-with block:
-    with gr.Row():
-        gr.Markdown(
-            "<h3><center>Chat-Your-Data (State-of-the-Union)</center></h3>")
-
-        openai_api_key_textbox = gr.Textbox(
-            placeholder="OpenAI API Key",
-            show_label=False,
-            lines=1,
-            type="password",
-        )
-
+with gr.Blocks(title="LangChain Chatbot", description="A chatbot powered by LangChain") as block:
     chatbot = gr.Chatbot()
 
     with gr.Row():
         message = gr.Textbox(
             label="What's your question?",
-            placeholder="Ask questions about the manuscript.",
+            placeholder="Type your message here...",
             lines=1,
+            scale=1
         )
-        submit = gr.Button(value="Send", variant="secondary").style(
-            full_width=False)
 
-    gr.Examples(
-        examples=[
-            "What did the president say about Ketanji Brown Jackson?",
-            "Did he mention Stephen Breyer?",
-            "What was his stance on Ukraine?",
-        ],
-        inputs=message,
+        submit = gr.Button(value="Send", variant="primary")
+
+    # Event handlers for the UI elements
+    submit.click(
+        chat,
+        inputs=[message],
+        outputs=[chatbot]
+    )
+    message.submit(
+        chat,
+        inputs=[message],
+        outputs=[chatbot]
     )
 
-    gr.HTML("Demo application of a LangChain chain.")
-
-    gr.HTML(
-        "<center>Powered by <a href='https://github.com/hwchase17/langchain'>LangChain 🦜️🔗</a></center>"
-    )
-
-    state = gr.State()
-    agent_state = gr.State()
-
-    submit.click(chat, inputs=[openai_api_key_textbox, message,
-                 state, agent_state], outputs=[chatbot, state])
-    message.submit(chat, inputs=[
-                   openai_api_key_textbox, message, state, agent_state], outputs=[chatbot, state])
-
-    openai_api_key_textbox.change(
-        set_openai_api_key,
-        inputs=[openai_api_key_textbox],
-        outputs=[agent_state],
-    )
-
-block.launch(debug=True)
+block.launch()
