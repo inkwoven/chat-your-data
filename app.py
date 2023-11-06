@@ -57,7 +57,7 @@ with block:
             "<h3><center>Chat-Your-Data (State-of-the-Union)</center></h3>")
 
         openai_api_key_textbox = gr.Textbox(
-            placeholder="Paste your OpenAI API key (sk-...)",
+            placeholder="OpenAI API Key",
             show_label=False,
             lines=1,
             type="password",
@@ -68,7 +68,7 @@ with block:
     with gr.Row():
         message = gr.Textbox(
             label="What's your question?",
-            placeholder="Ask questions about the most recent state of the union",
+            placeholder="Ask questions about the manuscript.",
             lines=1,
         )
         submit = gr.Button(value="Send", variant="secondary").style(

@@ -7,7 +7,7 @@ from langchain.memory import ConversationBufferMemory
 import pickle
 
 _template = """Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
-You can assume the question about the most recent state of the union address.
+You can assume the question about the manuscript, Mediating Race, Religion, and Modernity: The Trans-Atlantic Impact and Legacy of Edward Wilmot Blyden.
 
 Chat History:
 {chat_history}
@@ -15,11 +15,14 @@ Follow Up Input: {question}
 Standalone question:"""
 CONDENSE_QUESTION_PROMPT = PromptTemplate.from_template(_template)
 
-template = """You are an AI assistant for answering questions about the most recent state of the union address.
-You are given the following extracted parts of a long document and a question. Provide a conversational answer.
-If you don't know the answer, just say "Hmm, I'm not sure." Don't try to make up an answer.
-If the question is not about the most recent state of the union, politely inform them that you are tuned to only answer questions about the most recent state of the union.
-Lastly, answer the question as if you were a pirate from the south seas and are just coming back from a pirate expedition where you found a treasure chest full of gold doubloons.
+template = """
+You are designated as a meticulous academic editorial assistant. Your directive is to engage with academic manuscripts as presented by users, confining your evaluation strictly to the information provided within the manuscripts' text. Your responses should be both precise and circumspect, avoiding inferences beyond the manuscript's content. Engage with the following tasks:
+1. **Manuscript Summary:** Deliver a summary strictly reflecting the manuscript's content, focusing on the primary themes, arguments, and academic contributions.
+2. **Critical Manuscript Appraisal:** Conduct a critical appraisal solely based on the manuscript's narrative, assessing its academic significance and structural coherence.
+3. **Grammatical and Structural Correction:** Identify grammatical errors, inconsistencies, and inaccuracies, and suggest specific corrections that align with the information in the manuscript.
+4. **Argument and Fact Extraction:** Extract the foundational arguments and facts directly from the manuscript, meticulously delineating the narrative's structure.
+5. **Targeted Feedback:** Highlight the manuscript’s strengths and suggest improvements for clarity and impact, with suggestions directly related to the content of the manuscript.
+Operate within the confines of the manuscript's discourse, providing responses that are detailed, structured, and precise. Maintain a professional and academic tone that reflects the standards of academic editorial practice, focusing on enhancing the manuscript's quality for academic scrutiny.---
 Question: {question}
 =========
 {context}
@@ -37,7 +40,7 @@ def load_retriever():
 
 
 def get_basic_qa_chain():
-    llm = ChatOpenAI(model_name="gpt-4", temperature=0)
+    llm = ChatOpenAI(model_name="gpt-4", temperature=.7)
     retriever = load_retriever()
     memory = ConversationBufferMemory(
         memory_key="chat_history", return_messages=True)
@@ -49,7 +52,7 @@ def get_basic_qa_chain():
 
 
 def get_custom_prompt_qa_chain():
-    llm = ChatOpenAI(model_name="gpt-4", temperature=0)
+    llm = ChatOpenAI(model_name="gpt-4", temperature=.7)
     retriever = load_retriever()
     memory = ConversationBufferMemory(
         memory_key="chat_history", return_messages=True)
@@ -79,7 +82,7 @@ def get_condense_prompt_qa_chain():
 
 
 def get_qa_with_sources_chain():
-    llm = ChatOpenAI(model_name="gpt-4", temperature=0)
+    llm = ChatOpenAI(model_name="gpt-4", temperature=.5)
     retriever = load_retriever()
     history = []
     model = ConversationalRetrievalChain.from_llm(
